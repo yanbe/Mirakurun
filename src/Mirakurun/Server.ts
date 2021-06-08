@@ -18,6 +18,7 @@ import * as http from "http";
 import * as url from "url";
 import * as ip from "ip";
 import * as express from "express";
+import * as cors from "cors";
 import * as openapi from "express-openapi";
 import * as morgan from "morgan";
 import * as bodyParser from "body-parser";
@@ -83,6 +84,8 @@ class Server {
 
         app.disable("x-powered-by");
 
+        app.use(cors());
+
         app.use(morgan(":remote-addr :remote-user :method :url HTTP/:http-version :status :res[content-length] - :response-time ms :user-agent", {
             stream: log.event as any
         }));
@@ -126,14 +129,14 @@ class Server {
         app.use("/eventemitter3", express.static("node_modules/eventemitter3"));
         app.use("/react", express.static("node_modules/react"));
         app.use("/react-dom", express.static("node_modules/react-dom"));
-        app.use("/office-ui-fabric-react", express.static("node_modules/office-ui-fabric-react"));
+        app.use("/@fluentui/react", express.static("node_modules/@fluentui/react"));
 
         if (fs.existsSync("node_modules/swagger-ui-dist") === true) {
             app.use("/swagger-ui", express.static("node_modules/swagger-ui-dist"));
             app.get("/api/debug", (req, res) => res.redirect("/swagger-ui/?url=/api/docs"));
         }
 
-        const api = yaml.safeLoad(fs.readFileSync("api.yml", "utf8")) as OpenAPIV2.Document;
+        const api = yaml.load(fs.readFileSync("api.yml", "utf8")) as OpenAPIV2.Document;
         api.info.version = pkg.version;
 
         openapi.initialize({

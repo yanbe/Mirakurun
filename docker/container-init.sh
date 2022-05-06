@@ -104,15 +104,15 @@ if !(type "recpt1" > /dev/null 2>&1); then
 fi
 
 if [ -e "/etc/init.d/pcscd" ]; then
-  echo "Servece 'All': Status"
   rc-status -a
   touch /run/openrc/softlevel
   echo "starting udev..."
-  rc-service udev restart
+  rc-service udev start
   echo "starting dbus..."
-  rc-service dbus restart
+  rc-service dbus start
   echo "starting pcscd..."
-  rc-service pcscd restart
+  rc-service pcscd start
+
   while :; do
     sleep 1
     timeout 2 pcsc_scan | grep -A 50 "Using reader plug'n play mechanism"
@@ -131,17 +131,6 @@ function start() {
     npm run debug &
   fi
 
-if [ -e "/etc/init.d/pcscd" ]; then
-  echo "stopping pcscd..."
-  rc-service pcscd stop
-  echo "stoping dbus..."
-  rc-service dbus stop
-  echo "stoping udev..."
-  rc-service udev stop
-  sleep 1
-  echo "Servece 'All': Status"
-  rc-status -a
-fi
   wait
 }
 

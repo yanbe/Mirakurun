@@ -1,4 +1,4 @@
-FROM node:14.15.4-alpine
+FROM node:16.14.0-alpine
 RUN echo '@testing http://dl-cdn.alpinelinux.org/alpine/edge/testing/' >> /etc/apk/repositories
 RUN apk --update add ccid pcsc-tools@testing dbus udev openrc
 WORKDIR /app

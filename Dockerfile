@@ -1,5 +1,10 @@
 FROM node:16.14.0-alpine
-RUN apk add curl autoconf automake make gcc g++ --no-cache --virtual .recpt1-builddeps && \
+RUN apk add git pcsc-lite-libs pcsc-lite-dev cmake curl autoconf automake make gcc g++ --no-cache --virtual .recpt1-builddeps && \
+    git clone https://github.com/stz2012/libarib25 /tmp/libarib25 && \
+    cd /tmp/libarib25 && \
+    cmake . && \
+    make && \
+    make install && \
     curl -s http://aniloc.foltia.com/opensource/recpt1/{recpt1-STZ-20170806.zip} --output "/tmp/#1" && \
     unzip /tmp/recpt1-STZ-20170806.zip -d /tmp && \
     curl -s http://aniloc.foltia.com/opensource/recpt1/recpt1/{Makefile.in,checksignal.c,config.h,configure,pt1_dev.h,px4_ioctl.h,recpt1.c,recpt1.h,recpt1core.c,recpt1core.h,recpt1ctl.c} --output "/tmp/recpt1-master/recpt1/#1" && \
@@ -10,7 +15,7 @@ RUN apk add curl autoconf automake make gcc g++ --no-cache --virtual .recpt1-bui
     cd /tmp/recpt1-master/recpt1 && \
     ./autogen.sh && \
     chmod +x configure && \
-    ./configure --prefix=/opt && \
+    ./configure --prefix=/opt --enable-b25 && \
     make && \
     make install && \
     apk del .recpt1-builddeps

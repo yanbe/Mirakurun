@@ -14,6 +14,7 @@
    limitations under the License.
 */
 import { dirname } from "path";
+import { promises as fsPromises } from "fs";
 import * as fs from "fs";
 import * as common from "./common";
 import * as log from "./log";
@@ -25,9 +26,13 @@ export interface Service {
     name: string;
     type: number;
     logoId: number;
-    logoData?: string; // base64
     remoteControlKeyId?: number;
+    epgReady?: boolean;
+    epgUpdatedAt?: number;
     channel: Channel;
+
+    /** @deprecated */
+    logoData?: string; // base64
 }
 
 export interface Channel {
@@ -36,19 +41,19 @@ export interface Channel {
 }
 
 export interface Program {
-    id?: number;
-    eventId?: number;
-    serviceId?: number;
-    networkId?: number;
-    startAt?: number;
-    duration?: number;
-    isFree?: boolean;
+    id: number;
+    eventId: number;
+    serviceId: number;
+    networkId: number;
+    startAt: number;
+    duration: number;
+    isFree: boolean;
 
     name?: string;
     description?: string;
     genres?: ProgramGenre[];
     video?: ProgramVideo;
-    audio?: ProgramAudio;
+    audios?: ProgramAudio[];
 
     extended?: {
         [description: string]: string;
@@ -57,6 +62,9 @@ export interface Program {
     series?: ProgramSeries;
 
     relatedItems?: ProgramRelatedItem[];
+
+    /** (internal) indicates EIT[p/f] received */
+    _pf?: true;
 }
 
 export interface ProgramGenre {
@@ -82,9 +90,22 @@ export type ProgramVideoResolution = (
 );
 
 export interface ProgramAudio {
-    samplingRate: ProgramAudioSamplingRate;
-
+    /** component_type
+     * - 0x01 - 1/0 mode (single-mono)
+     * - 0x02 - 1/0 + 1/0 mode (dual-mono)
+     * - 0x03 - 2/0 mode (stereo)
+     * - 0x07 - 3/1 mode
+     * - 0x08 - 3/2 mode
+     * - 0x09 - 3/2 + LFE mode
+     */
     componentType: number;
+    componentTag: number;
+    isMain: boolean;
+    samplingRate: ProgramAudioSamplingRate;
+    /** ISO_639_language_code, ISO_639_language_code_2
+     * - this `#length` will `2` if dual-mono multi-lingual.
+     */
+    langs: ProgramAudioLanguageCode[];
 }
 
 export enum ProgramAudioSamplingRate {
@@ -96,6 +117,19 @@ export enum ProgramAudioSamplingRate {
     "48kHz" = 48000
 }
 
+export type ProgramAudioLanguageCode = (
+    "jpn" |
+    "eng" |
+    "deu" |
+    "fra" |
+    "ita" |
+    "rus" |
+    "zho" |
+    "kor" |
+    "spa" |
+    "etc"
+);
+
 export interface ProgramSeries {
     id: number;
     repeat: number;
@@ -106,7 +140,10 @@ export interface ProgramSeries {
     name: string;
 }
 
+export type ProgramRelatedItemType = "shared" | "relay" | "movement";
+
 export interface ProgramRelatedItem {
+    type: ProgramRelatedItemType;
     networkId?: number;
     serviceId: number;
     eventId: number;
@@ -116,7 +153,7 @@ export function loadServices(integrity: string): Service[] {
     return load(process.env.SERVICES_DB_PATH, integrity);
 }
 
-export function saveServices(data: Service[], integrity: string): Promise<void> {
+export async function saveServices(data: Service[], integrity: string): Promise<void> {
     return save(process.env.SERVICES_DB_PATH, data, integrity);
 }
 
@@ -124,7 +161,7 @@ export function loadPrograms(integrity: string): Program[] {
     return load(process.env.PROGRAMS_DB_PATH, integrity);
 }
 
-export function savePrograms(data: Program[], integrity: string): Promise<void> {
+export async function savePrograms(data: Program[], integrity: string): Promise<void> {
     return save(process.env.PROGRAMS_DB_PATH, data, integrity);
 }
 
@@ -155,31 +192,28 @@ function load(path: string, integrity: string) {
     }
 }
 
-function save(path: string, data: any[], integrity: string): Promise<void> {
+async function save(path: string, data: any[], integrity: string, retrying = false): Promise<void> {
 
     log.info("save db `%s` w/ integirty (%s)", path, integrity);
 
     data.unshift({ __integrity__: integrity });
 
-    return new Promise<void>((resolve, reject) => {
-
-        // mkdir if not exists
-        const dirPath = dirname(path);
-        if (fs.existsSync(dirPath) === false) {
-            try {
-                fs.mkdirSync(dirPath, { recursive: true });
-            } catch (e) {
-                return reject(e);
+    try {
+        await fsPromises.writeFile(path, JSON.stringify(data));
+    } catch (e) {
+        if (retrying === false) {
+            // mkdir if not exists
+            const dirPath = dirname(path);
+            if (fs.existsSync(dirPath) === false) {
+                try {
+                    fs.mkdirSync(dirPath, { recursive: true });
+                } catch (e) {
+                    throw e;
+                }
             }
+            // retry
+            return save(path, data, integrity, true);
         }
-
-        fs.writeFile(path, JSON.stringify(data), err => {
-
-            if (err) {
-                return reject(err);
-            }
-
-            resolve();
-        });
-    });
+        throw e;
+    }
 }

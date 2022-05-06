@@ -18,7 +18,7 @@ import * as api from "../../../api";
 import * as common from "../../../common";
 import * as config from "../../../config";
 import * as db from "../../../db";
-import Tuner from "../../../Tuner";
+import _ from "../../../_";
 
 let isScanning = false;
 
@@ -34,7 +34,7 @@ const channelOrder = {
     SKY: 4
 };
 
-enum RegisterMode {
+enum ScanMode {
     Channel = "Channel",
     Service = "Service"
 }
@@ -46,15 +46,15 @@ interface ChannelScanOption {
     startSubCh?: number;
     endSubCh?: number;
     useSubCh?: boolean;
-    registerMode?: RegisterMode;
-    registerOnDisabled?: boolean;
+    scanMode?: ScanMode;
+    setDisabledOnAdd?: boolean;
     refresh?: boolean;
 }
 
 interface ScanConfig {
     readonly channels: string[];
-    readonly registerMode: RegisterMode;
-    readonly registerOnDisabled: boolean;
+    readonly scanMode: ScanMode;
+    readonly setDisabledOnAdd: boolean;
 }
 
 function range(start: number, end: number): string[] {
@@ -67,33 +67,36 @@ export function generateScanConfig(option: ChannelScanOption): ScanConfig {
     Object.keys(option).forEach(key => option[key] === undefined && delete option[key]);
 
     if (option.type === common.ChannelTypes.GR) {
-        option = Object.assign({
+        option = {
             startCh: 13,
             endCh: 62,
-            registerMode: RegisterMode.Channel,
-            registerOnDisabled: false
-        }, option);
+            scanMode: ScanMode.Channel,
+            setDisabledOnAdd: false,
+            ...option
+        };
 
         return {
             channels: range(option.startCh, option.endCh).map((ch) => ch),
-            registerMode: option.registerMode,
-            registerOnDisabled: option.registerOnDisabled
+            scanMode: option.scanMode,
+            setDisabledOnAdd: option.setDisabledOnAdd
         };
     }
 
-    option = Object.assign({
-        registerMode: RegisterMode.Service,
-        registerOnDisabled: true
-    }, option);
+    option = {
+        scanMode: ScanMode.Service,
+        setDisabledOnAdd: true,
+        ...option
+    };
 
     if (option.type === common.ChannelTypes.BS) {
         if (option.useSubCh) {
-            option = Object.assign({
+            option = {
                 startCh: 1,
                 endCh: 23,
                 startSubCh: 0,
-                endSubCh: 3
-            }, option);
+                endSubCh: 3,
+                ...option
+            };
 
             const channels: string[] = [];
             for (const ch of range(option.startCh, option.endCh)) {
@@ -104,38 +107,40 @@ export function generateScanConfig(option: ChannelScanOption): ScanConfig {
 
             return {
                 channels: channels,
-                registerMode: option.registerMode,
-                registerOnDisabled: option.registerOnDisabled
+                scanMode: option.scanMode,
+                setDisabledOnAdd: option.setDisabledOnAdd
             };
         }
 
-        option = Object.assign({
+        option = {
             startCh: 101,
-            endCh: 256
-        }, option);
+            endCh: 256,
+            ...option
+        };
 
         return {
             channels: range(option.startCh, option.endCh).map((ch) => ch),
-            registerMode: option.registerMode,
-            registerOnDisabled: option.registerOnDisabled
+            scanMode: option.scanMode,
+            setDisabledOnAdd: option.setDisabledOnAdd
         };
     }
 
     if (option.type === common.ChannelTypes.CS) {
-        option = Object.assign({
+        option = {
             startCh: 2,
-            endCh: 24
-        }, option);
+            endCh: 24,
+            ...option
+        };
 
         return {
             channels: range(option.startCh, option.endCh).map((ch) => `CS${ch}`),
-            registerMode: option.registerMode,
-            registerOnDisabled: option.registerOnDisabled
+            scanMode: option.scanMode,
+            setDisabledOnAdd: option.setDisabledOnAdd
         };
     }
 }
 
-export function generateChannelItemForService(type: common.ChannelType, channel: string, service: db.Service, registerOnDisabled: boolean): config.Channel {
+export function generateChannelItemForService(type: common.ChannelType, channel: string, service: db.Service, setDisabledOnAdd: boolean): config.Channel {
 
     let name = service.name;
     name = name.trim();
@@ -148,11 +153,11 @@ export function generateChannelItemForService(type: common.ChannelType, channel:
         type: type,
         channel: channel,
         serviceId: service.serviceId,
-        isDisabled: registerOnDisabled
+        isDisabled: setDisabledOnAdd
     };
 }
 
-export function generateChannelItemForChannel(type: common.ChannelType, channel: string, services: db.Service[], registerOnDisabled: boolean): config.Channel {
+export function generateChannelItemForChannel(type: common.ChannelType, channel: string, services: db.Service[], setDisabledOnAdd: boolean): config.Channel {
 
     const baseName = services[0].name;
     let matchIndex = baseName.length;
@@ -186,21 +191,21 @@ export function generateChannelItemForChannel(type: common.ChannelType, channel:
         name: name,
         type: type,
         channel: channel,
-        isDisabled: registerOnDisabled
+        isDisabled: setDisabledOnAdd
     };
 }
 
-export function generateChannelItems(registerMode: RegisterMode, type: common.ChannelType, channel: string, services: db.Service[], registerOnDisabled: boolean): config.Channel[] {
+export function generateChannelItems(scanMode: ScanMode, type: common.ChannelType, channel: string, services: db.Service[], setDisabledOnAdd: boolean): config.Channel[] {
 
-    if (registerMode === RegisterMode.Service) {
+    if (scanMode === ScanMode.Service) {
         const channelItems: config.Channel[] = [];
         for (const service of services) {
-            channelItems.push(generateChannelItemForService(type, channel, service, registerOnDisabled));
+            channelItems.push(generateChannelItemForService(type, channel, service, setDisabledOnAdd));
         }
         return channelItems;
     }
 
-    return [generateChannelItemForChannel(type, channel, services, registerOnDisabled)];
+    return [generateChannelItemForChannel(type, channel, services, setDisabledOnAdd)];
 }
 
 export const put: Operation = async (req, res) => {
@@ -209,10 +214,11 @@ export const put: Operation = async (req, res) => {
         api.responseError(res, 409, "Already Scanning");
         return;
     }
-
-    req.setTimeout(1000 * 60 * 3); // 3 minites
-
     isScanning = true;
+
+    req.setTimeout(1000 * 60 * 10); // 10 minites
+
+    const dryRun = req.query.dryRun as any as boolean;
     const type = req.query.type as common.ChannelType;
     const refresh = req.query.refresh as any as boolean;
     const oldChannelItems = config.loadChannels();
@@ -222,6 +228,9 @@ export const put: Operation = async (req, res) => {
 
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.status(200);
+    if (dryRun) {
+        res.write("-- dry run --\n\n");
+    }
     res.write(`channel scanning... (type: "${type}")\n\n`);
 
     const scanConfig = generateScanConfig({
@@ -231,54 +240,60 @@ export const put: Operation = async (req, res) => {
         startSubCh: req.query.minSubCh as any as number,
         endSubCh: req.query.maxSubCh as any as number,
         useSubCh: req.query.useSubCh as any as boolean,
-        registerMode: req.query.registerMode as any as RegisterMode,
-        registerOnDisabled: req.query.registerOnDisabled as any as boolean
+        scanMode: req.query.scanMode as any as ScanMode,
+        setDisabledOnAdd: req.query.setDisabledOnAdd as any as boolean
     });
 
-    for (const channel of scanConfig.channels) {
-        res.write(`channel: "${channel}" ...\n`);
+    const chLength = scanConfig.channels.length;
+    for (let i = 0; i < chLength; i++) {
+        const channel = scanConfig.channels[i];
+
+        res.write(`channel: "${channel}" (${i + 1}/${chLength}) [${Math.round((i + 1) / chLength * 100)}%] ...\n`);
 
         if (!refresh) {
-            const takeoverChannelItems = oldChannelItems.filter(chItem => chItem.type === type && chItem.channel === channel && chItem.isDisabled === false);
+            const takeoverChannelItems = oldChannelItems.filter(chItem => chItem.type === type && chItem.channel === channel && !chItem.isDisabled);
             if (takeoverChannelItems.length > 0) {
-                res.write(`-> Skip scan.\n`);
-                res.write(`-> ${takeoverChannelItems.length} existing settings were found.\n`);
+                res.write(`-> ${takeoverChannelItems.length} existing config found.\n`);
                 for (const channelItem of takeoverChannelItems) {
                     result.push(channelItem);
                     ++takeoverCount;
                     res.write(`-> ${JSON.stringify(channelItem)}\n`);
                 }
-                res.write(`*Notice* The scan was skipped to carry over the existing settings.\n\n`);
+                res.write(`# scan has skipped due to the "refresh = false" option because an existing config was found.\n\n`);
                 continue;
             }
         }
 
         let services: db.Service[];
         try {
-            services = await Tuner.getServices(<any> {
+            services = await _.tuner.getServices(<any> {
                 type: type,
                 channel: channel
             });
         } catch (e) {
-            res.write(`-> no signal. [${e}] \n\n`);
+            res.write("-> no signal.");
+            if (/stream has closed before get network/.test(e) === false) {
+                res.write(` [${e}]`);
+            }
+            res.write("\n\n");
             continue;
         }
 
-        services = services.filter(service => service.type === 1);
+        services = services.filter(service => service.type === 1 || service.type === 173);
         res.write(`-> ${services.length} services found.\n`);
 
         if (services.length === 0) {
-            res.write(`\n`);
+            res.write("\n");
             continue;
         }
 
-        const scannedChannelItems = generateChannelItems(scanConfig.registerMode, type, channel, services, scanConfig.registerOnDisabled);
+        const scannedChannelItems = generateChannelItems(scanConfig.scanMode, type, channel, services, scanConfig.setDisabledOnAdd);
         for (const scannedChannelItem of scannedChannelItems) {
             result.push(scannedChannelItem);
             ++newCount;
             res.write(`-> ${JSON.stringify(scannedChannelItem)}\n`);
         }
-        res.write(`\n`);
+        res.write("\n");
     }
 
     result.sort((a, b) => {
@@ -288,20 +303,31 @@ export const put: Operation = async (req, res) => {
             return channelOrder[a.type] - channelOrder[b.type];
         }
     });
-    config.saveChannels(result);
 
-    res.write(`-> total ${newCount + takeoverCount} channels (of Takeover is ${takeoverCount}) found and ${result.length} channels stored.\n\n`);
+    res.write(`-> new ${newCount} channels found.\n`);
+    res.write(`-> existing ${takeoverCount} channels merged.\n`);
+    res.write(`-> total ${newCount + takeoverCount}/${result.length} (${type}/Any) channels configured.\n\n`);
+
+    if (!dryRun) {
+        config.saveChannels(result);
+    }
 
     isScanning = false;
 
-    res.write(`channel scan has completed and saved successfully.\n`);
-    res.write(`**RESTART REQUIRED** to apply changes.\n`);
+    if (dryRun) {
+        res.write("channel scan has been completed.\n\n");
+        res.write("-- dry run --\n");
+    } else {
+        res.write("channel scan has been completed and saved successfully.\n");
+        res.write("**RESTART REQUIRED** to apply changes.\n");
+    }
 
     res.end();
 };
 
 put.apiDoc = {
-    summary: "Scan the receivable channels and rewrite the channel settings.",
+    tags: ["config"],
+    summary: "Channel Scan",
     description: `Entry rewriting specifications:
 - The scan is performed on a range of channels of the specified type and the entries for those channels, if any, are saved in the configuration file.
 - If the channel to be scanned is described in the configuration file and is enabled, the scan will not be performed for that channel and the entries described will remain intact. If you do not want to keep the entries, use the \`refresh\` option.
@@ -315,13 +341,20 @@ About BS Subchannel Style:
     From \`BS\${minCh}_\${minSubCh}\` to \`BS\${maxCh}_\${maxSubCh}\`
 - In the subchannel style, minCh and maxCh are zero padded to two digits. minSubCh and maxSubCh are not padded.
 - BS "non" subchannel style scans and GR scans are basically the same. Note that if you scan the wrong channel range, the GR channel will be registered as BS and the BS channel will be registered as GR. This problem does not occur because CS scan uses a character string with \`CS\` added as a channel number prefix.`,
-    tags: ["config"],
     operationId: "channelScan",
     produces: [
         "text/plain",
         "application/json"
     ],
     parameters: [
+        {
+            in: "query",
+            name: "dryRun",
+            type: "boolean",
+            allowEmptyValue: true,
+            default: false,
+            description: "dry run. If `true`, the scanned result will not be saved."
+        },
         {
             in: "query",
             name: "type",
@@ -364,19 +397,19 @@ About BS Subchannel Style:
         },
         {
             in: "query",
-            name: "registerMode",
+            name: "scanMode",
             type: "string",
-            enum: [RegisterMode.Channel, RegisterMode.Service],
-            description: "When you register the scanned channel information, specify whether you want to register it by channel or by service.\n\n" +
+            enum: [ScanMode.Channel, ScanMode.Service],
+            description: "To specify the service explictly, use the `Service` mode.\n\n" +
                 "_Default value (GR)_: Channel\n" +
                 "_Default value (BS/CS)_: Service"
         },
         {
             in: "query",
-            name: "registerOnDisabled",
+            name: "setDisabledOnAdd",
             type: "boolean",
             allowEmptyValue: true,
-            description: "If `true`, disable the channel setting during registration.\n\n" +
+            description: "If `true`, set disable on add channel.\n\n" +
                 "_Default value (GR)_: false\n" +
                 "_Default value (BS/CS)_: true"
         },

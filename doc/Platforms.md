@@ -2,31 +2,30 @@
 
 ## Overview
 
-**Bold** is the recommended. also, **Node.js** `^10.15.0 < 11 || ^12 || ^14` needed.
+**Bold** is the recommended. also, **Node.js** `^14.17.0 || ^16` needed.
 
 * [**Docker on Linux**](#docker-on-linux)
   * [Docker Engine](https://docs.docker.com/engine/install/) `>=18.06.0`
   * [Docker Compose](https://docs.docker.com/compose/install/) `>=1.22.0`
-  * **x64**
+  * **x64** / arm32v7 / **arm64v8**
   * **Ubuntu Server 20.04** / Debian 9 / CentOS 8.1
-  * Note: Desktop / VM is not supported.
+  * ⚠ Note: Desktop Environment / VM is not supported and unstable!
 * [Linux](#linux)
   * [PM2](http://pm2.keymetrics.io/) `>=2.4.0`
-  * x86 / **x64** / ARMv7 / **ARMv8**
+  * x86 / x64 / arm64v8
   * **Debian** / **Ubuntu Server** / CentOS / Gentoo
   * SystemV / OpenRC / **SystemD**
-  * Note: Desktop / VM is not supported.
-* [Win32](#win32) (Experimental)
+  * ⚠ Note: Desktop Environment / VM is not supported and unstable!
+* [Win32](#win32) (Experimental, Unstable, Not Recommended, Not Tested)
   * [winser](https://github.com/jfromaniello/winser) `>=1.0.3`
-  * Windows 10 RS3 `npm i winser@1.0.3 -g`
-  * Note: WSL / Linux VM is not supported.
+  * ⚠ Note: WSL / Linux VM is not supported!
 
 ## Docker on Linux
 
 **Note:**
 
-* Desktop / VM is not supported. lacking reliability by critical performance issue.
-* You must uninstall pcscd if installed.
+* ⚠ Any desktop environment / VM is not supported. lacking reliability by critical performance issue.
+* ⚠ You must **uninstall** `pcscd` if installed.
 * PT2/PT3/PX-* users: Use default DVB driver instead of chardev driver.
   * please uninstall chardev drivers then reboot before install.
 
@@ -40,6 +39,10 @@ curl -sSL https://get.docker.com/ | CHANNEL=stable sh
 ### Install / Uninstall / Update
 
 ```sh
+# Create: /opt/mirakurun/
+sudo mv -vf /usr/local/mirakurun /opt/mirakurun
+sudo mkdir -p /opt/mirakurun/run /opt/mirakurun/opt /opt/mirakurun/config /opt/mirakurun/data
+
 # Install
 mkdir ~/mirakurun/
 cd ~/mirakurun/
@@ -81,20 +84,50 @@ docker-compose logs [-f]
 ### Config
 
 ```
-vim /usr/local/mirakurun/config/server.yml
-vim /usr/local/mirakurun/config/tuners.yml
-vim /usr/local/mirakurun/config/channels.yml
+vim /opt/mirakurun/config/server.yml
+vim /opt/mirakurun/config/tuners.yml
+vim /opt/mirakurun/config/channels.yml
 ```
 
 see: [Configuration.md](Configuration.md)
 
 ### 💡 How to Use: Non-DVB Devices
 
+#### option: **using custom startup script**
+
 ```sh
-$ which recpt1
-/usr/local/bin/recpt1
-$ cp /usr/local/bin/recpt1 /usr/local/mirakurun/opt/bin/
-$ vim /usr/local/mirakurun/config/tuners.yml
+mkdir -p /opt/mirakurun/opt/bin
+vim /opt/mirakurun/opt/bin/startup # example ↓
+chmod +x /opt/mirakurun/opt/bin/startup
+```
+```bash
+#!/bin/bash
+
+if !(type "recpt1" > /dev/null 2>&1); then
+  apt-get update
+  apt-get install -y --no-install-recommends git autoconf automake
+
+  cd /tmp
+  git clone https://github.com/stz2012/recpt1.git
+  cd recpt1/recpt1
+  ./autogen.sh
+  ./configure --prefix /opt
+  make
+  make install
+fi
+
+recpt1 -v
+```
+```sh
+docker-compose down
+docker-compose run --rm -e SETUP=true mirakurun
+docker-compose up -d
+```
+
+#### option: **using static build**
+
+```sh
+$ cp /usr/local/bin/something-static /opt/mirakurun/opt/bin/
 ```
 
 ### 💡 Locations (Container)
@@ -109,43 +142,52 @@ $ vim /usr/local/mirakurun/config/tuners.yml
   * `programs.json`
 * Opt: `/opt/`
   * `bin/`
+  * `bin/startup` - custom startup script (optional)
 
 ### 💡 Locations (Host)
 
-* Socket: `/usr/local/mirakurun/run/mirakurun.sock`
-* Config: `/usr/local/mirakurun/config/`
+* Socket: `/opt/mirakurun/run/mirakurun.sock`
+* Config: `/opt/mirakurun/config/`
   * `server.yml`
   * `tuners.yml`
   * `channels.yml`
-* Data: `/usr/local/mirakurun/data/`
+* Data: `/opt/mirakurun/data/`
   * `services.json`
   * `programs.json`
-* Opt: `/usr/local/mirakurun/opt/`
+* Opt: `/opt/mirakurun/opt/`
   * `bin/`
+  * `bin/startup` - custom startup script (optional)
 
 ## Linux
+
+**Note:**
+
+* ⚠ Any desktop environment / VM is not supported. lacking reliability by critical performance issue.
 
 ### Node.js
 
 * **via Package Manager** (recommended)
   * [Debian / Ubuntu](https://github.com/nodesource/distributions/blob/master/README.md#deb) (deb)
-    * `curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash -`
+    * `curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -`
     * `sudo apt-get install -y nodejs`
   * [CentOS](https://github.com/nodesource/distributions/blob/master/README.md#rpm) (rpm)
-    * (root) `curl -sL https://rpm.nodesource.com/setup_14.x | bash -`
+    * (root) `curl -sL https://rpm.nodesource.com/setup_16.x | bash -`
   * [Gentoo](https://nodejs.org/en/download/package-manager/#gentoo)
     * `emerge nodejs`
 * [nave](https://github.com/isaacs/nave)
-  * `sudo /path/to/nave.sh usemain 14`
+  * `sudo /path/to/nave.sh usemain 16`
 
 ### Install / Update
 
 ```sh
+# for building C++ addons (Debian / Ubuntu)
+sudo apt install build-essential
+
 # PM2 (Process Manager)
 sudo npm install pm2 -g
 
 # Quick
-sudo npm install mirakurun -g --unsafe-perm --production
+sudo npm install mirakurun -g --unsafe-perm --foreground-scripts --production
 
 # Advanced
 sudo npm install mirakurun -g --production
@@ -211,6 +253,11 @@ mirakurun version
 
 ## Win32
 
+**Note:**
+
+- ⚠ Experimental, Unstable, Not Recommended, Not Tested
+- ⚠ WSL / Linux VM is not supported!
+
 ### Node.js
 
 * [**Windows installer**](https://nodejs.org/en/download/)
@@ -228,7 +275,7 @@ npm install winser@1.0.3 -g
 **use Windows PowerShell as Admin.**
 
 ```
-npm install mirakurun@latest -g --production
+npm install mirakurun@latest -g --foreground-scripts --production
 ```
 
 ### Uninstall

@@ -17,12 +17,39 @@ import { Operation } from "express-openapi";
 import * as api from "../api";
 import { Status } from "../../../api";
 import status from "../status";
-import Program from "../Program";
-import Tuner from "../Tuner";
+import _ from "../_";
 
 const pkg = require("../../../package.json");
 
 export const get: Operation = (req, res) => {
+
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.status(200);
+
+    res.end(JSON.stringify(getStatus(), null, 2));
+};
+
+get.apiDoc = {
+    tags: ["status"],
+    summary: "Get Status",
+    operationId: "getStatus",
+    responses: {
+        200: {
+            description: "OK",
+            schema: {
+                $ref: "#/definitions/Status"
+            }
+        },
+        default: {
+            description: "Unexpected Error",
+            schema: {
+                $ref: "#/definitions/Error"
+            }
+        }
+    }
+};
+
+export function getStatus(): Status {
 
     const ret: Status = {
         time: Date.now(),
@@ -34,6 +61,7 @@ export const get: Operation = (req, res) => {
             env: {
                 PATH: process.env.PATH,
                 DOCKER: process.env.DOCKER,
+                DOCKER_NETWORK: process.env.DOCKER_NETWORK,
                 pm_uptime: process.env.pm_uptime,
                 USING_WINSER: process.env.USING_WINSER,
                 NODE_ENV: process.env.NODE_ENV,
@@ -41,17 +69,19 @@ export const get: Operation = (req, res) => {
                 TUNERS_CONFIG_PATH: process.env.TUNERS_CONFIG_PATH,
                 CHANNELS_CONFIG_PATH: process.env.CHANNELS_CONFIG_PATH,
                 SERVICES_DB_PATH: process.env.SERVICES_DB_PATH,
-                PROGRAMS_DB_PATH: process.env.PROGRAMS_DB_PATH
+                PROGRAMS_DB_PATH: process.env.PROGRAMS_DB_PATH,
+                LOGO_DATA_DIR_PATH: process.env.LOGO_DATA_DIR_PATH
             },
             pid: process.pid,
             memoryUsage: process.memoryUsage()
         },
         epg: {
             gatheringNetworks: [],
-            storedEvents: Program.all().length
+            storedEvents: _.program.itemMap.size
         },
+        rpcCount: status.rpcCount,
         streamCount: {
-            tunerDevice: Tuner.all().filter(td => td.isUsing === true).length,
+            tunerDevice: _.tuner.devices.filter(td => td.isUsing === true).length,
             tsFilter: status.streamCount.tsFilter,
             decoder: status.streamCount.decoder
         },
@@ -83,26 +113,5 @@ export const get: Operation = (req, res) => {
         }
     }
 
-    res.setHeader("Content-Type", "application/json; charset=utf-8");
-    res.status(200);
-    res.end(JSON.stringify(ret, null, 2));
-};
-
-get.apiDoc = {
-    tags: ["status"],
-    operationId: "getStatus",
-    responses: {
-        200: {
-            description: "OK",
-            schema: {
-                $ref: "#/definitions/Status"
-            }
-        },
-        default: {
-            description: "Unexpected Error",
-            schema: {
-                $ref: "#/definitions/Error"
-            }
-        }
-    }
-};
+    return ret;
+}

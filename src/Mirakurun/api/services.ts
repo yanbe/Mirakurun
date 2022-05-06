@@ -16,54 +16,27 @@
 import { Operation } from "express-openapi";
 import sift from "sift";
 import * as api from "../api";
+import * as apid from "../../../api";
+import _ from "../_";
 import Service from "../Service";
-import ServiceItem from "../ServiceItem";
 import { ChannelTypes } from "../common";
 
-export const get: Operation = (req, res) => {
+export const get: Operation = async (req, res) => {
 
-    const services = Service.all().map(service => {
+    const serviceItems = [..._.service.items]; // shallow copy
+    serviceItems.sort((a, b) => a.getOrder() - b.getOrder());
 
-        const ret: any = service.export();
-        ret.hasLogoData = service.hasLogoData;
+    const services: apid.Service[] = [];
 
-        return ret;
-    });
+    for (const serviceItem of serviceItems.filter(sift(req.query))) {
+        services.push({
+            ...serviceItem.export(),
+            hasLogoData: await Service.isLogoDataExists(serviceItem.networkId, serviceItem.logoId)
+        });
+    }
 
-    services.sort((a: ServiceItem, b: ServiceItem) => getOrder(a) - getOrder(b));
-
-    api.responseJSON(res, sift(req.query as any, services));
+    api.responseJSON(res, services);
 };
-
-function getOrder(service: ServiceItem): number {
-
-    let order: string;
-
-    switch (service.channel.type) {
-        case "GR":
-            order = "1";
-            break;
-        case "BS":
-            order = "2";
-            break;
-        case "CS":
-            order = "3";
-            break;
-        case "SKY":
-            order = "4";
-            break;
-    }
-
-    if (service.remoteControlKeyId) {
-        order += (100 + service.remoteControlKeyId).toString(10);
-    } else {
-        order += "200";
-    }
-
-    order += (10000 + service.serviceId).toString(10);
-
-    return parseInt(order, 10);
-}
 
 get.apiDoc = {
     tags: ["services"],

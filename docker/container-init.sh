@@ -18,7 +18,12 @@ export MALLOC_ARENA_MAX=2
 function trap_exit() {
   echo "stopping... $(jobs -p)"
   kill $(jobs -p) > /dev/null 2>&1 || echo "already killed."
-  /etc/init.d/pcscd stop
+  echo "stopping pcscd..."
+  rc-service pcscd stop
+  echo "stopping dbus..."
+  rc-service dbus stop 
+  echo "stopping udev..."
+  rc-service udev stop
   sleep 1
   echo "exit."
 }

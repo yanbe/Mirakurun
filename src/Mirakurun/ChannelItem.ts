@@ -21,6 +21,7 @@ import * as log from "./log";
 import * as common from "./common";
 import * as config from "./config";
 import ServiceItem from "./ServiceItem";
+import TSFilter from "./TSFilter";
 
 export default class ChannelItem {
 
@@ -149,8 +150,8 @@ export default class ChannelItem {
         return _.service.findByChannel(this);
     }
 
-    getStream(user: common.User): Promise<stream.Readable> {
-        return _.tuner.getChannelStream(this, user);
+    getStream(user: common.User, output: stream.Writable): Promise<TSFilter> {
+        return _.tuner.initChannelStream(this, user, output);
     }
 
     serviceScan(add: boolean): void {
@@ -179,7 +180,9 @@ export default class ChannelItem {
                 if (item !== null) {
                     item.name = service.name;
                     item.type = service.type;
-                    item.logoId = service.logoId;
+                    if (service.logoId > -1) {
+                        item.logoId = service.logoId;
+                    }
                     item.remoteControlKeyId = service.remoteControlKeyId;
                 } else if (add === true) {
                     _.service.add(
@@ -190,7 +193,6 @@ export default class ChannelItem {
                             service.name,
                             service.type,
                             service.logoId,
-                            undefined,
                             service.remoteControlKeyId
                         )
                     );

@@ -19,6 +19,7 @@ import _ from "./_";
 import * as db from "./db";
 import Event from "./Event";
 import ChannelItem from "./ChannelItem";
+import TSFilter from "./TSFilter";
 
 export default class ServiceItem {
 
@@ -35,10 +36,10 @@ export default class ServiceItem {
         private _name?: string,
         private _type?: number,
         private _logoId?: number,
-        private _logoData?: string,
-        private _remoteControlKeyId?: number
+        private _remoteControlKeyId?: number,
+        private _epgReady: boolean = false,
+        private _epgUpdatedAt: number = 0
     ) {
-
         this._id = ServiceItem.getId(_networkId, _serviceId);
     }
 
@@ -96,24 +97,6 @@ export default class ServiceItem {
         }
     }
 
-    get logoData(): Buffer {
-        return Buffer.from(this._logoData, "base64");
-    }
-
-    set logoData(logo: Buffer) {
-
-        if (this._logoData !== logo.toString("base64")) {
-            this._logoData = logo.toString("base64");
-
-            _.service.save();
-            this._updated();
-        }
-    }
-
-    get hasLogoData(): boolean {
-        return !!this._logoData;
-    }
-
     get remoteControlKeyId(): number {
         return this._remoteControlKeyId;
     }
@@ -128,11 +111,39 @@ export default class ServiceItem {
         }
     }
 
+    get epgReady(): boolean {
+        return this._epgReady;
+    }
+
+    set epgReady(epgReady: boolean) {
+
+        if (this._epgReady !== epgReady) {
+            this._epgReady = epgReady;
+
+            _.service.save();
+            this._updated();
+        }
+    }
+
+    get epgUpdatedAt(): number {
+        return this._epgUpdatedAt;
+    }
+
+    set epgUpdatedAt(time: number) {
+
+        if (this._epgUpdatedAt !== time) {
+            this._epgUpdatedAt = time;
+
+            _.service.save();
+            this._updated();
+        }
+    }
+
     get channel(): ChannelItem {
         return this._channel;
     }
 
-    export(full: boolean = false): db.Service {
+    export(): db.Service {
 
         const ret: db.Service = {
             id: this._id,
@@ -142,21 +153,49 @@ export default class ServiceItem {
             type: this._type,
             logoId: this._logoId,
             remoteControlKeyId: this._remoteControlKeyId,
+            epgReady: this._epgReady,
+            epgUpdatedAt: this._epgUpdatedAt,
             channel: {
                 type: this._channel.type,
                 channel: this._channel.channel
             }
         };
 
-        if (full === true) {
-            ret.logoData = this._logoData;
-        }
-
         return ret;
     }
 
-    getStream(userRequest: common.UserRequest): Promise<stream.Readable> {
-        return _.tuner.getServiceStream(this, userRequest);
+    getStream(userRequest: common.UserRequest, output: stream.Writable): Promise<TSFilter> {
+        return _.tuner.initServiceStream(this, userRequest, output);
+    }
+
+    getOrder(): number {
+
+        let order: string;
+
+        switch (this._channel.type) {
+            case "GR":
+                order = "1";
+                break;
+            case "BS":
+                order = "2";
+                break;
+            case "CS":
+                order = "3";
+                break;
+            case "SKY":
+                order = "4";
+                break;
+        }
+
+        if (this._remoteControlKeyId) {
+            order += (100 + this._remoteControlKeyId).toString(10);
+        } else {
+            order += "200";
+        }
+
+        order += (10000 + this._serviceId).toString(10);
+
+        return parseInt(order, 10);
     }
 
     private _updated(): void {

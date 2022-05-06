@@ -1,14 +1,12 @@
-[![Mirakurun](https://yabumi.cc/159e63f5c692b3b0dae47765.svg)](https://github.com/Chinachu/Mirakurun)
+[![Mirakurun](https://gist.githubusercontent.com/kanreisa/0ab27d7771e97edce5a24cc81b9b8ce6/raw/e50683f1c4e7d1a13e9ef468f8cc945b0dbc853c/logo-mirakurun.svg)](https://github.com/Chinachu/Mirakurun)
 
 # Mirakurun
 
-DVR Tuner Server Service for **[Chinachu](https://chinachu.moe/)** Air.
+DVR Tuner Server for Japanese TV which designed for the "Air" (in development codename).
 
 [![npm version][npm-img]][npm-url]
 [![npm downloads][downloads-image]][downloads-url]
 [![Linux Build][azure-pipelines-img]][azure-pipelines-url]
-[![Dependency Status][dep-img]][dep-url]
-[![devDependency Status][devdep-img]][devdep-url]
 [![tip for next commit](https://tip4commit.com/projects/43158.svg)](https://tip4commit.com/github/Chinachu/Mirakurun)
 [![Backers on Open Collective](https://opencollective.com/Mirakurun/backers/badge.svg)](#backers)
 [![Sponsors on Open Collective](https://opencollective.com/Mirakurun/sponsors/badge.svg)](#sponsors)
@@ -42,21 +40,23 @@ see: [doc/Platforms.md](doc/Platforms.md)
 * Integrated MPEG-2 TS Parser, Filter
 * Realtime EPG Parser
 * Supports most Tuner Devices (chardev, DVB / ISDB-T, ISDB-S, DVB-S2)
+* Channel Scan
 * IPv6 Support
 * [Multiplexing Mirakuruns](doc/Mirakuruns.md)
 * Web UI
+* IPTV Server (M3U8 Playlist, XMLTV)
 
 #### Figure: Variety of the MPEG-2 TS Stream API
 
-![](https://yabumi.cc/1689b554eb4aea9bad992068.svg)
+![](https://gist.githubusercontent.com/kanreisa/0ab27d7771e97edce5a24cc81b9b8ce6/raw/e50683f1c4e7d1a13e9ef468f8cc945b0dbc853c/mirakurun-fig-api-variety.svg)
 
 #### Figure: Stream Flow
 
-![](https://yabumi.cc/1689b5d310c654a770d44e7a.svg)
+![](https://gist.githubusercontent.com/kanreisa/0ab27d7771e97edce5a24cc81b9b8ce6/raw/e50683f1c4e7d1a13e9ef468f8cc945b0dbc853c/mirakurun-fig-flow-stream.svg)
 
 ## Requirements / Supported Platforms
 
-* [Node.js](http://nodejs.org/) 10, 12, 14
+* [Node.js](http://nodejs.org/) 14, 16
 * Linux w/ [PM2](http://pm2.keymetrics.io/) or [Docker](https://hub.docker.com/r/chinachu/mirakurun)
 
 see: [doc/Platforms.md](doc/Platforms.md)
@@ -75,31 +75,6 @@ http://_your_mirakurun_ip_:40772/
 http://_your_mirakurun_ip_:40772/api/debug
 ```
 
-## Munin Plugin
-
-**Required**
-* [Munin](http://munin-monitoring.org/) `>=1.4.0`
-
-### Installation
-
-```sh
-ln -s /usr/local/lib/node_modules/mirakurun/bin/munin-plugins/mirakurun_status.js /usr/share/munin/plugins/mirakurun_status
-ln -s /usr/share/munin/plugins/mirakurun_status /etc/munin/plugins/mirakurun_status
-# check
-munin-run mirakurun_status
-# apply
-service munin-node restart
-```
-
-#### Workaround: `/usr/bin/env: node: No such file or directory`
-
-create `/etc/munin/plugin-conf.d/mirakurun.conf` like below:
-
-```
-[mirakurun_*]
-command /usr/local/bin/node %c
-```
-
 ## PM2 Plus (Keymetrics)
 
 You can use PM2 Plus to realtime monitoring if running by PM2.
@@ -111,12 +86,13 @@ You can use PM2 Plus to realtime monitoring if running by PM2.
 * [Rivarun](https://github.com/Chinachu/Rivarun)
 * [BonDriver_Mirakurun](https://github.com/Chinachu/BonDriver_Mirakurun)
 * Mirakurun Client ([Built-in](https://github.com/Chinachu/Mirakurun/blob/master/src/client.ts))
+  * "Air" (in development codename)
   * [Chinachu γ](https://github.com/Chinachu/Chinachu/wiki/Gamma-Installation-V2)
   * [EPGStation](https://github.com/l3tnun/EPGStation)
 
 ## Contributing
 
-[CONTRIBUTING.md](.github/CONTRIBUTING.md)
+[CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Supporting
 
@@ -155,7 +131,7 @@ Support this project by becoming a sponsor. Your logo will show up here with a l
 
 ## Copyright / License
 
-&copy; 2016-2020 [kanreisa](https://github.com/kanreisa).
+&copy; 2016- [kanreisa](https://github.com/kanreisa).
 
 * Code: [Apache License, Version 2.0](LICENSE)
 * Docs: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
@@ -168,9 +144,5 @@ Support this project by becoming a sponsor. Your logo will show up here with a l
 [downloads-image]: https://img.shields.io/npm/dm/mirakurun.svg?style=flat
 [downloads-url]: https://npmjs.org/package/mirakurun
 [azure-pipelines-img]: https://dev.azure.com/chinachu/Mirakurun/_apis/build/status/Chinachu.Mirakurun?branchName=master
-[azure-pipelines-url]: hhttps://dev.azure.com/chinachu/Mirakurun/_build/latest?definitionId=1&branchName=master
-[dep-img]: https://david-dm.org/Chinachu/Mirakurun.svg
-[dep-url]: https://david-dm.org/Chinachu/Mirakurun
-[devdep-img]: https://david-dm.org/Chinachu/Mirakurun/dev-status.svg
-[devdep-url]: https://david-dm.org/Chinachu/Mirakurun#info=devDependencies
+[azure-pipelines-url]: https://dev.azure.com/chinachu/Mirakurun/_build/latest?definitionId=1&branchName=master
 [docker-url]: https://hub.docker.com/r/chinachu/mirakurun

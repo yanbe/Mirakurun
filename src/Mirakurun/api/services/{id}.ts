@@ -15,6 +15,8 @@
 */
 import { Operation } from "express-openapi";
 import * as api from "../../api";
+import * as apid from "../../../../api";
+import _ from "../../_";
 import Service from "../../Service";
 
 export const parameters = [
@@ -27,19 +29,20 @@ export const parameters = [
     }
 ];
 
-export const get: Operation = (req, res) => {
+export const get: Operation = async (req, res) => {
 
-    const service = Service.get(req.params.id as any as number);
+    const serviceItem = _.service.get(req.params.id as any as number);
 
-    if (service === null || service === undefined) {
+    if (serviceItem === null || serviceItem === undefined) {
         api.responseError(res, 404);
         return;
     }
 
-    const ret: any = service.export();
-    ret.hasLogoData = service.hasLogoData;
-
-    res.json(ret);
+    const service: apid.Service = {
+        ...serviceItem.export(),
+        hasLogoData: await Service.isLogoDataExists(serviceItem.networkId, serviceItem.logoId)
+    };
+    res.json(service);
 };
 
 get.apiDoc = {

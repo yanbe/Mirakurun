@@ -13,12 +13,18 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
+@import "@fluentui/react/dist/css/fabric.min.css";
+
 body {
     background: #25272e;
 }
 
 .ms-Fabric {
     color: #ebebeb;
+}
+
+.ms-layer {
+    display: none;
 }
 
 input::placeholder {

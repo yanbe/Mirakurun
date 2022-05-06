@@ -13,6 +13,8 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 */
+Buffer.poolSize = 0; // disable memory pool
+
 require("dotenv").config();
 import { execSync } from "child_process";
 import { createHash } from "crypto";
@@ -42,6 +44,7 @@ setEnv("TUNERS_CONFIG_PATH", "/usr/local/etc/mirakurun/tuners.yml");
 setEnv("CHANNELS_CONFIG_PATH", "/usr/local/etc/mirakurun/channels.yml");
 setEnv("SERVICES_DB_PATH", "/usr/local/var/db/mirakurun/services.json");
 setEnv("PROGRAMS_DB_PATH", "/usr/local/var/db/mirakurun/programs.json");
+setEnv("LOGO_DATA_DIR_PATH", "/usr/local/var/db/mirakurun/logo-data");
 
 import _ from "./Mirakurun/_";
 import status from "./Mirakurun/status";

@@ -1,8 +1,10 @@
 FROM node:16.14.0-alpine
-RUN apk add curl make gcc g++ --no-cache --virtual .recpt1-builddeps && \
+RUN apk add curl autoconf automake make gcc g++ --no-cache --virtual .recpt1-builddeps && \
     curl -s http://plex-net.co.jp/download/linux/{Linux_Driver.zip} --output "/tmp/#1" && \
     unzip -q /tmp/Linux_Driver.zip -d /tmp && \
     cd /tmp/Linux_Driver/MyRecpt1/MyRecpt1/recpt1 && \
+    chmod +x autogen.sh && \
+    ./autogen.sh && \
     chmod +x configure && \
     ./configure --prefix /opt && \
     make clean && \

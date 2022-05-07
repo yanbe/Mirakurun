@@ -3,8 +3,10 @@ FROM node:16.14.0-alpine
 RUN set -x \
     apk update && \
     apk add build-base git autoconf automake --no-cache --virtual .recpt1-builddeps
-RUN git clone https://github.com/nativeshoes/px_drv.git /tmp/recpt1 && \
-    cd /tmp/recpt1/recpt1 && \
+RUN git clone https://github.com/nativeshoes/px_drv.git /tmp/recpt1-nativeshoes && \
+    git clone https://github.com/stz2012/recpt1.git /tmp/recpt1-stz2012 && \
+    cp /tmp/recpt1-stz2012/recpt1/pt1_dev.h /tmp/recpt1-nativeshoes/recpt1/pt1_dev.h && \
+    cd /tmp/recpt1-nativeshoes/recpt1 && \
     sed -i -e 's!\(typedef struct\) msgbuf!\1!' recpt1core.h && \
     sed -i -e 's!\(#define _RECPT1_H_\)!\1\n#include <sys/types.h>\n!' recpt1.h && \
     sed -i -e 's!\(#include "pt1_dev.h"\)!\1\n#include "asicen_dtv.h"\n!' recpt1core.c && \
@@ -14,7 +16,7 @@ RUN git clone https://github.com/nativeshoes/px_drv.git /tmp/recpt1 && \
     make && \
     make install && \
     apk del .recpt1-builddeps && \
-    rm -rf /tmp/recpt1
+    rm -rf /tmp/recpt1-*
 WORKDIR /app
 ENV DOCKER=YES NODE_ENV=production
 ADD . .

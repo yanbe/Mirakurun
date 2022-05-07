@@ -1,12 +1,6 @@
 FROM node:16.14.0-alpine
-RUN apk add git pcsc-lite-libs pcsc-lite-dev cmake curl autoconf automake make gcc g++ --no-cache --virtual .recpt1-builddeps && \
-    git clone https://github.com/stz2012/libarib25 /tmp/libarib25 && \
-    cd /tmp/libarib25 && \
-    cmake . && \
-    make && \
-    make install && \
-    ldconfig /
-RUN curl -s http://aniloc.foltia.com/opensource/recpt1/{recpt1-STZ-20170806.zip} --output "/tmp/#1" && \
+RUN apk add curl autoconf automake make gcc g++ --no-cache --virtual .recpt1-builddeps && \
+    curl -s http://aniloc.foltia.com/opensource/recpt1/{recpt1-STZ-20170806.zip} --output "/tmp/#1" && \
     unzip /tmp/recpt1-STZ-20170806.zip -d /tmp && \
     curl -s http://aniloc.foltia.com/opensource/recpt1/recpt1/{Makefile.in,checksignal.c,config.h,configure,pt1_dev.h,px4_ioctl.h,recpt1.c,recpt1.h,recpt1core.c,recpt1core.h,recpt1ctl.c} --output "/tmp/recpt1-master/recpt1/#1" && \
     curl http://plex-net.co.jp/download/linux/{Linux_Driver.zip} --output "/tmp/#1" && \
@@ -16,7 +10,7 @@ RUN curl -s http://aniloc.foltia.com/opensource/recpt1/{recpt1-STZ-20170806.zip}
     cd /tmp/recpt1-master/recpt1 && \
     ./autogen.sh && \
     chmod +x configure && \
-    ./configure --prefix=/opt --enable-b25 && \
+    ./configure --prefix=/opt && \
     make && \
     make install && \
     apk del .recpt1-builddeps

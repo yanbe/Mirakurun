@@ -1,12 +1,20 @@
 FROM node:16.14.0-alpine
-RUN apk add curl --no-cache --virtual .recpt1-builddeps && \
-    curl http://plex-net.co.jp/download/linux/{Linux_Driver.zip} --output "/tmp/#1" && \
-    unzip /tmp/Linux_Driver.zip -d /tmp && \
-    mkdir -pv /opt/bin && \
-    cp /tmp/Linux_Driver/MyRecpt1/MyRecpt1/recpt1/recpt1 /opt/bin/recpt1 && \
-    chmod +x /opt/bin/recpt1 && \
-    apk add gcompat --no-cache && \
-    apk del .recpt1-builddeps
+
+RUN set -x \
+    apk update && \
+    apk add build-base git autoconf automake --no-cache --virtual .recpt1-builddeps
+RUN git clone https://github.com/nativeshoes/px_drv.git /tmp/recpt1 && \
+    cd /tmp/recpt1/recpt1 && \
+    sed -i -e 's!\(typedef struct\) msgbuf!\1!' recpt1core.h && \
+    sed -i -e 's!\(#define _RECPT1_H_\)!\1\n#include <sys/types.h>\n!' recpt1.h && \
+    sed -i -e 's!\(#include "pt1_dev.h"\)!\1\n#include "asicen_dtv.h"\n!' recpt1core.c && \
+    chmod +x autogen.sh && \
+    ./autogen.sh && \
+    ./configure && \
+    make && \
+    make install && \
+    apk del .recpt1-builddeps && \
+    rm -rf /tmp/recpt1
 WORKDIR /app
 ENV DOCKER=YES NODE_ENV=production
 ADD . .

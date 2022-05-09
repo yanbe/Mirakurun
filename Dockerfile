@@ -2,7 +2,7 @@ FROM node:16.14.0-alpine
 
 RUN set -x \
     apk update && \
-    apk add build-base git autoconf automake --no-cache --virtual .recpt1-builddeps
+    apk add build-base git autoconf automake
 RUN git clone https://github.com/nativeshoes/px_drv.git /tmp/recpt1-nativeshoes && \
     git clone https://github.com/stz2012/recpt1.git /tmp/recpt1-stz2012 && \
     cp /tmp/recpt1-stz2012/recpt1/pt1_dev.h /tmp/recpt1-nativeshoes/recpt1/pt1_dev.h && \
@@ -15,17 +15,15 @@ RUN git clone https://github.com/nativeshoes/px_drv.git /tmp/recpt1-nativeshoes 
     ./configure && \
     make && \
     make install && \
-    apk del .recpt1-builddeps && \
     rm -rf /tmp/recpt1-*
 WORKDIR /app
 ENV DOCKER=YES NODE_ENV=production
 ADD . .
-RUN apk add build-base --no-cache --virtual .mirakurun-builddeps && \
+RUN apk add build-base && \
     npm install --production=false && \
     npm run build && \
     npm install -g --unsafe-perm --production && \
-    cp -r /usr/local/lib/node_modules/mirakurun /app && \
-    apk del .mirakurun-builddeps
+    cp -r /usr/local/lib/node_modules/mirakurun /app
 RUN echo '@testing http://dl-cdn.alpinelinux.org/alpine/edge/testing/' >> /etc/apk/repositories && \
     apk add ccid pcsc-tools@testing dbus openrc && \
     rc-update add dbus default && \
